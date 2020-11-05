@@ -7,6 +7,7 @@ import java.io.File;
 import java.util.HashMap;
 
 import tech.smallwonder.mp3fy.interfaces.OnFailureListener;
+import tech.smallwonder.mp3fy.interfaces.OnMetadataAvailableListener;
 import tech.smallwonder.mp3fy.interfaces.OnSuccessListener;
 
 public class MP3fy {
@@ -19,8 +20,6 @@ public class MP3fy {
         System.loadLibrary("avcodec");
         System.loadLibrary("avformat");
         System.loadLibrary("avutil");
-        System.loadLibrary("swresample");
-        System.loadLibrary("swscale");
         System.loadLibrary("mp3fy");
     }
 
@@ -80,7 +79,7 @@ public class MP3fy {
     }
 
     /**
-     * Returns the current progress of the conversion process. This can and should only be used in async mode of the conversion. Any other scenario might cause the application to crash. You've been warned!
+     * Returns the current progress of the conversion process. This can and should only be used in async mode of the media conversion function. Any other scenario might cause this code to crash. You've been warned!
      * @return the current conversion progress, -1 on error.
      */
     public int getPercentage() {
@@ -91,11 +90,26 @@ public class MP3fy {
     /**
      * Fetches all the metadata available in this media file
      * This method might take some time to complete, so it's probably better to call this in a background thread
+     * @see MP3fy#getAllMetadataAsync(String, OnMetadataAvailableListener)
+     * @see MP3fy#getAllMetadata(File)
      * @param path - The path to the file we want to fetch the metadata
      * @return - ArrayList of HashMap<String, String> containing the metadata or an empty HashMap on error
      */
     public HashMap<String, String> getAllMetadata(String path) {
         return getAllMetadataNative(path);
+    }
+
+    /**
+     * Like getAllMetadata(String), but asynchronous.
+     */
+    public void getAllMetadataAsync(final String path, final OnMetadataAvailableListener metadataAvailableListener) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HashMap<String, String> metadata = getAllMetadataNative(path);
+                metadataAvailableListener.onMetadataAvailable(metadata);
+            }
+        }).start();
     }
 
     /**
@@ -173,7 +187,8 @@ public class MP3fy {
 
     /**
      * Edit metadata info stored in inputFile and store the result in outputFile
-     * Note that not all metadata will be set if the audio file format does not allow it
+     * Note that not all metadata will be set if the audio file format does not allow it.
+     * It is the caller's responsibility to ascertain that all the information set is reflected in the new file
      * @param inputFile Audio file to set metadata
      * @param metadataInfos Metadata information to be set
      * @param outputFile Output file with the new metadata information

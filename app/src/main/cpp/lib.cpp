@@ -7,7 +7,6 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavformat/avformat.h>
 #include <libavutil/audio_fifo.h>
-#include <libswscale/swscale.h>
 }
 
 #include <iostream>
@@ -448,7 +447,6 @@ static jobject get_jni_metadatas(JNIEnv* env, AVFormatContext* context) {
 }
 
 static jobject get_jni_bitmap(JNIEnv* env, AVFormatContext* format_context) {
-
     int size;
     auto album_art = get_album_art(format_context, &size);
 
@@ -652,21 +650,32 @@ Java_tech_smallwonder_mp3fy_MP3fy_editMetadataInformationNative(JNIEnv *env, job
     for (int i = 0; i < context->nb_streams; i++) {
         if (context->streams[i]->disposition & AV_DISPOSITION_ATTACHED_PIC) {
             attached_pic_stream_index = i;
+            break;
         }
     }
 
-    album_art_stream = avformat_new_stream(output_format_context, nullptr);
-    album_art_stream->disposition = AV_DISPOSITION_ATTACHED_PIC;
+    // Ascertain that we have to add this stream
+    if (attached_pic_stream_index != -1 || album_art_len != 0) {
+        album_art_stream = avformat_new_stream(output_format_context, nullptr);
+        album_art_stream->disposition = AV_DISPOSITION_ATTACHED_PIC;
+    }
+
     if (album_art_len != 0) attached_pic_stream_index = album_art_stream->index;
 
     // Conditional Start ==
     if (album_art_len != 0 || attached_pic_stream_index != -1) {
+        album_art_stream->codecpar->format = AV_PIX_FMT_YUVJ440P;
+        album_art_stream->codecpar->width = width;
+        album_art_stream->codecpar->height = height;
+        album_art_stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+        album_art_stream->codecpar->codec_id = AV_CODEC_ID_MJPEG;
+        album_art_stream->codecpar->codec_tag = 0;
         if (album_art_len != 0) {
             packet2 = av_packet_alloc();
             auto art_ptr = (uint8_t*) env->GetByteArrayElements(album_art, &isCopy);
             packet2->data = art_ptr;
             packet2->size = album_art_len;
-            uint8_t* dataz = (uint8_t*) av_malloc(album_art_len);
+            auto dataz = (uint8_t*) av_malloc(album_art_len);
             if (!dataz) {
                 return JNI_FALSE;
             }
@@ -722,6 +731,11 @@ Java_tech_smallwonder_mp3fy_MP3fy_editMetadataInformationNative(JNIEnv *env, job
         } else {
             __android_log_print(ANDROID_LOG_INFO, "MP3Fy", "Got to the album art section");
             if (album_art_len != 0) {
+                // We can only write one album art
+                if (wrote_album_art) {
+                    av_packet_unref(packet);
+                    continue;
+                }
                 if (packet->stream_index == attached_pic_stream_index) {
                     packet2->stream_index = attached_pic_stream_index;
                     __android_log_print(ANDROID_LOG_INFO, "MP3Fy", "This is the index of the packet we're supposed to write");
@@ -732,6 +746,11 @@ Java_tech_smallwonder_mp3fy_MP3fy_editMetadataInformationNative(JNIEnv *env, job
                 }
                 __android_log_print(ANDROID_LOG_INFO, "MP3Fy", "Wrote the custom album art packet");
             } else {
+                // We can only write one album art
+                if (wrote_album_art) {
+                    av_packet_unref(packet);
+                    continue;
+                }
                 av_interleaved_write_frame(output_format_context, packet);
                 av_packet_unref(packet);
                 wrote_album_art = true;
@@ -754,7 +773,6 @@ Java_tech_smallwonder_mp3fy_MP3fy_editMetadataInformationNative(JNIEnv *env, job
     av_free(context);
 
     __android_log_print(ANDROID_LOG_INFO, "MP3Fy", "Finished up");
-
     return JNI_TRUE;
 }
 
