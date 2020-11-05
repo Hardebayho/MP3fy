@@ -1,4 +1,4 @@
-MP3fy
+#MP3fy
 ======
 This library helps to convert video files to mp3. It also allows you to edit metadata on audio files and also change or add album arts for the files.
 
@@ -6,7 +6,7 @@ The library uses FFMPEG's C libraries under the hood, and bundles all the requir
 
 It can also fetch info (metadata) about audio files, and can even extract and give you the album art associated with the audio (if available)
 
-#Usage
+##Usage
 =======
 This is a fairly simple library. To convert a video file to mp3, you can do:
 ```java
@@ -37,5 +37,10 @@ The keys can be found in the AudioFileInfo.MetadataKeys class. Note that this li
 To fetch metadata for audio file (with album art)
 ```java
 AudioFileInfo fileInfo = MP3fy.getInstance().getAudioFileInfo(path);
-``` 
+```
+There's more to check out inside the MP3fy class, so do that :)
+
+##Download
+You can download the library from the releases page.
+
 

@@ -14,8 +14,14 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes SourceFile,LineNumberTable
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-renamesourcefileattribute SourceFile
+
+-printconfiguration '~/Desktop/full-r8-config.txt'
+
+-keep public class tech.smallwonder.mp3fy.AudioFileInfo, tech.smallwonder.mp3fy.MP3fy
+
+-keep public interface tech.smallwonder.mp3fy.interfaces.OnFailureListener, tech.smallwonder.mp3fy.interfaces.OnMetadataAvailableListener, tech.smallwonder.mp3fy.interfaces.OnSuccessListener
